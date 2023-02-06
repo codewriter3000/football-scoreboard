@@ -5,7 +5,7 @@ function App() {
   const [ptsHome, setPtsHome] = useState(0);
   const [ptsAway, setPtsAway] = useState(0);
   const [quarter, setQuarter] = useState(1);
-  const [time, setTime] = useState(900);
+  const [time, setTime] = useState(720); // 900 = 15 minute quarters, 720 = 12 minute quarters, 600 = 10 minute quarters,
   const [isTicking, setIsTicking] = useState(false);
   const [possession, setPossession] = useState("Home");
   const [isPAT, setIsPAT] = useState(false);
@@ -17,16 +17,28 @@ function App() {
   const [gameMsg, setGameMsg] = useState("It's a beautiful night with clear skies.");
 
   useEffect(() => {
-    setGameMsg("Timeout, Home");
+    if(possession === "Home"){
+      setGameMsg("Home has the ball");
+    } else {
+      setGameMsg("Away has the ball");
+    }
+  }, [possession]);
+
+  useEffect(() => {
     if(timeoutsHome === 0){
       setNoMoreTimeoutsHome(true);
+      setGameMsg("Timeout, Home. This is their last timeout of the half.");
+    } else {
+      setGameMsg("Timeout, Home.");
     }
   }, [timeoutsHome]);
 
   useEffect(() => {
-    setGameMsg("Timeout, Away");
     if(timeoutsAway === 0){
       setNoMoreTimeoutsAway(true);
+      setGameMsg("Timeout, Away. This is their last timeout of the half.");
+    } else {
+      setGameMsg("Timeout, Away.");
     }
   }, [timeoutsAway]);
 
@@ -34,16 +46,26 @@ function App() {
     if(time === 0){
       setQuarter(quarter+1);
       setIsTicking(false);
+      resetClock();
     }
   }, [time, quarter]);
 
   useEffect(() => {
+    if(quarter === 2){
+      setGameMsg("We are in the 2nd quarter.")
+    }
     if(quarter === 3){
+      setGameMsg("We are in halftime.");
       setTimeoutsHome(3);
       setTimeoutsAway(3);
     }
     if(quarter === 4){
+      setGameMsg("We are in the 4th quarter.");
+    }
+    if(quarter === 5 && ptsHome !== ptsAway){
       setGameOver(true);
+    } else {
+      setGameMsg("We are in overtime");
     }
   }, [quarter])
 
@@ -58,7 +80,7 @@ function App() {
     if(isTicking){
       interval = setInterval(() => {
         setTime((time) => time - 1);
-      }, 1000);
+      }, 10); // 1000 for production, for dev, 1, 10, or 100
     } else {
       clearInterval(interval);
     }
@@ -66,6 +88,10 @@ function App() {
       clearInterval(interval);
     };
   }, [isTicking]);
+
+  const resetClock = () => {
+    setTime(720); // make sure this matches line 8
+  };
 
   const timeToTimestamp = (time) => {
     const minutes = Math.floor(time/60);
@@ -90,6 +116,8 @@ function App() {
     setIsPAT(false);
     setPtsHome(0);
     setPtsAway(0);
+    setTimeoutsHome(3);
+    setTimeoutsAway(3);
   }
 
   const touchdownHome = () => {
@@ -116,10 +144,10 @@ function App() {
   const handle2PtSafety = () => {
     if(possession === "Home"){
       setPtsAway(ptsAway+2);
-      setPossession("Away");
+      setGameMsg("The away team just got a safety.")
     } else {
       setPtsHome(ptsHome+2);
-      setPossession("Home");
+      setGameMsg("The home team just got a safety.")
     }
     setIsTicking(false);
   }
@@ -132,72 +160,65 @@ function App() {
 
     if(possession === "Home"){
       setPtsAway(ptsAway+1);
-      setPossession("Away");
+      setGameMsg("This is a rare calling. On the play after the touchdown, the ball was downed in the home team's endzone, which results in the away team getting a 1 point safety.")
     } else {
       setPtsHome(ptsHome+1);
-      setPossession("Home");
+      setGameMsg("This is a rare calling. On the play after the touchdown, the ball was downed in the away team's endzone, which results in the away team getting a 1 point safety.")
     }
     setIsPAT(false);
   }
 
   const handlePATMissed = () => {
     setIsPAT(false);
-    if(possession === "Home"){
-      setPossession("Away");
-    } else {
-      setPossession("Home");
-    }
+    setGameMsg("The extra point was no good.");
   }
 
   const handlePATGood = () => {
     if(possession === "Home"){
-      setPtsAway(ptsHome+1);
-      setPossession("Away");
+      setPtsHome(ptsHome+1);
     } else {
-      setPtsHome(ptsAway+1);
-      setPossession("Home");
+      setPtsAway(ptsAway+1);
     }
     setIsPAT(false);
+    setGameMsg("The extra point was good.")
   }
 
   const handle2PtConversion = () => {
     if(possession === "Home"){
-      setPtsAway(ptsHome+2);
-      setPossession("Away");
+      setPtsHome(ptsHome+2);
     } else {
-      setPtsHome(ptsAway+2);
-      setPossession("Home");
+      setPtsAway(ptsAway+2);
     }
     setIsPAT(false);
+    setGameMsg("The 2 point conversion was good.")
   }
 
   const handle2PtDefense = () => {
     if(possession === "Home"){
       setPtsAway(ptsAway+2);
-      setPossession("Away");
     } else {
       setPtsHome(ptsHome+2);
-      setPossession("Home");
     }
     setIsPAT(false);
+    setGameMsg("The play after the touchdown resulted in a defensive recovery that reached the defense's endzone. The 2 points will go to the defense.");
   }
 
   const possessionChange = () => {
     if(possession === "Home"){
       setPossession("Away");
-      setGameMsg("Away has the ball");
     } else {
       setPossession("Home");
-      setGameMsg("Home has the ball");
     }
   }
 
   const handleTimeoutHome = () => {
     setTimeoutsHome(timeoutsHome-1);
+    setIsTicking(false);
   }
 
   const handleTimeoutAway = () => {
     setTimeoutsAway(timeoutsAway-1);
+    setIsTicking(false);
   }
 
   return (
@@ -219,12 +240,12 @@ function App() {
       <button onClick={handle1PtSafety} disabled={!isPAT}>1 Pt Safety</button>
       <button onClick={handleTimeoutAway} disabled={noMoreTimeoutsAway}>Timeout Away</button>
       <br />
-      <button>-1 Home</button>
-      <button>-1 Away</button>
-      <button>+1 Min</button>
-      <button>+1 Sec</button>
-      <button>-1 Min</button>
-      <button>-1 Sec</button>
+      <button onClick={() => setPtsHome(ptsHome-1)}>-1 Home</button>
+      <button onClick={() => setPtsAway(ptsAway-1)}>-1 Away</button>
+      <button onClick={() => setTime(time + 60)}>+1 Min</button>
+      <button onClick={() => setTime(time + 1)}>+1 Sec</button>
+      <button onClick={() => setTime(time - 60)}>-1 Min</button>
+      <button onClick={() => setTime(time - 1)}>-1 Sec</button>
       <hr />
       Quarter: {quarter}
       <h2>{timeToTimestamp(time)}</h2>
