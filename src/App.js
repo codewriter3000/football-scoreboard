@@ -30,6 +30,7 @@ function App() {
       setGameMsg("Timeout, Home. This is their last timeout of the half.");
     } else {
       setGameMsg("Timeout, Home.");
+      setNoMoreTimeoutsHome(false);
     }
   }, [timeoutsHome]);
 
@@ -39,6 +40,7 @@ function App() {
       setGameMsg("Timeout, Away. This is their last timeout of the half.");
     } else {
       setGameMsg("Timeout, Away.");
+      setNoMoreTimeoutsAway(false);
     }
   }, [timeoutsAway]);
 
@@ -62,10 +64,12 @@ function App() {
     if(quarter === 4){
       setGameMsg("We are in the 4th quarter.");
     }
-    if(quarter === 5 && ptsHome !== ptsAway){
-      setGameOver(true);
-    } else {
-      setGameMsg("We are in overtime");
+    if(quarter === 5){
+      if(ptsHome !== ptsAway){
+        setGameOver(true);
+      } else {
+        setGameMsg("We are in overtime");
+      }
     }
   }, [quarter])
 
