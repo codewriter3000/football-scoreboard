@@ -94,7 +94,7 @@ function App() {
     if(isTicking){
       interval = setInterval(() => {
         setTime((time) => time - 1);
-      }, 10); // 1000 for production, for dev, 1, 10, or 100
+      }, 1000); // 1000 for production, for dev, 1, 10, or 100
     } else {
       clearInterval(interval);
     }
