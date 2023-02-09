@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
+  const quarterLength = 720; // 900 = 15 minute quarters, 720 = 12 minute quarters, 600 = 10 minute quarters
   const [ptsHome, setPtsHome] = useState(0);
   const [ptsAway, setPtsAway] = useState(0);
   const [quarter, setQuarter] = useState(1);
-  const [time, setTime] = useState(720); // 900 = 15 minute quarters, 720 = 12 minute quarters, 600 = 10 minute quarters,
+  const [time, setTime] = useState(quarterLength);
   const [isTicking, setIsTicking] = useState(false);
   const [possession, setPossession] = useState("Home");
   const [isPAT, setIsPAT] = useState(false);
@@ -53,31 +54,40 @@ function App() {
   }, [time, quarter]);
 
   useEffect(() => {
-    if(quarter === 2){
+    if(time !== 0){
+      return;
+    }
+    if(quarter === 1){
       setGameMsg("We are in the 2nd quarter.")
     }
-    if(quarter === 3){
+    if(quarter === 2){
       setGameMsg("We are in halftime.");
       setTimeoutsHome(3);
       setTimeoutsAway(3);
     }
-    if(quarter === 4){
+    if(quarter === 3){
       setGameMsg("We are in the 4th quarter.");
     }
-    if(quarter === 5){
+    if(quarter >= 4){
       if(ptsHome !== ptsAway){
         setGameOver(true);
       } else {
         setGameMsg("We are in overtime");
       }
     }
-  }, [quarter])
+  }, [quarter, ptsAway, ptsHome, time]);
 
   useEffect(() => {
     if(gameOver === true){
-      setGameMsg("Game Over");
+      if(ptsAway > ptsHome){
+        setGameMsg("Away wins");
+      } else if(ptsHome > ptsAway){
+        setGameMsg("Home wins");
+      } else {
+        setGameMsg("Tie");
+      }
     }
-  }, [gameOver]);
+  }, [gameOver, ptsAway, ptsHome]);
 
   useEffect(() => {
     let interval = null;
@@ -94,7 +104,7 @@ function App() {
   }, [isTicking]);
 
   const resetClock = () => {
-    setTime(720); // make sure this matches line 8
+    setTime(quarterLength);
   };
 
   const timeToTimestamp = (time) => {
@@ -113,27 +123,28 @@ function App() {
   }
 
   const newGame = () => {
-    setGameMsg("It's a beautiful night with clear skies.")
+    setGameOver(false);
     setQuarter(1);
     setIsTicking(false);
-    setTime(900);
+    setTime(quarterLength);
     setIsPAT(false);
     setPtsHome(0);
     setPtsAway(0);
     setTimeoutsHome(3);
     setTimeoutsAway(3);
+    setGameMsg("It's a beautiful night with clear skies.")
   }
 
-  const touchdownHome = () => {
-    setPtsHome(ptsHome+6);
-    setIsTicking(false);
-    setIsPAT(true);
-  }
-
-  const touchdownAway = () => {
-    setPtsAway(ptsAway+6);
-    setIsTicking(false);
-    setIsPAT(true);
+  const touchdown = () => {
+    if(possession === "Home"){
+      setPtsHome(ptsHome+6);
+      setIsTicking(false);
+      setIsPAT(true);
+    } else {
+      setPtsAway(ptsAway+6);
+      setIsTicking(false);
+      setIsPAT(true);
+    }
   }
 
   const handleFieldGoal = () => {
@@ -198,13 +209,19 @@ function App() {
   }
 
   const handle2PtDefense = () => {
+    let alertMsg = window.confirm("This is an incredibly rare calling. Are you sure that the end of this play resulted in a defensive 2 point conversion?");
+    if(!alertMsg){
+      return;
+    }
+
     if(possession === "Home"){
       setPtsAway(ptsAway+2);
+      setGameMsg("This is a rare calling. On the play after the touchdown, the defense gained possession of the ball and scored in the endzone, resulting in a defensive 2 point conversion.");
     } else {
       setPtsHome(ptsHome+2);
+      setGameMsg("This is a rare calling. On the play after the touchdown, the defense gained possession of the ball and scored in the endzone, resulting in a defensive 2 point conversion.");
     }
     setIsPAT(false);
-    setGameMsg("The play after the touchdown resulted in a defensive recovery that reached the defense's endzone. The 2 points will go to the defense.");
   }
 
   const possessionChange = () => {
@@ -225,38 +242,58 @@ function App() {
     setIsTicking(false);
   }
 
+  const handleEndGame = () => {
+    setGameOver(true);
+  }
+
+  const handleKeyDown = key => {
+    switch(key){
+      case 'q': newGame(); break;
+      case 'w': startClock(); break;
+      case 'e': stopClock(); break;
+      case 'r': possessionChange(); break;
+      case 't': handle2PtConversion(); break;
+      case 'y': handle2PtDefense(); break;
+      case 'u': handleTimeoutHome(); break;
+      default: break;
+    }
+  }
+
   return (
-    <div className="App">
+    <div className="App" onKeyDown={handleKeyDown}>
       <button onClick={newGame}>New Game</button>
-      <button onClick={startClock} disabled={isPAT}>Start Clock</button>
-      <button onClick={stopClock} disabled={isPAT}>Stop Clock</button>
-      <button onClick={possessionChange} disabled={isPAT}>Poss Change</button>
-      <button onClick={handle2PtConversion} disabled={!isPAT}>2 Pt Good</button>
-      <button onClick={handle2PtDefense} disabled={!isPAT}>2 Pt Def</button>
-      <button onClick={handleTimeoutHome} disabled={noMoreTimeoutsHome}>Timeout Home</button>
+      <button onClick={startClock} disabled={isPAT || gameOver}>Start Clock</button>
+      <button onClick={stopClock} disabled={isPAT || gameOver}>Stop Clock</button>
+      <button onClick={possessionChange} disabled={isPAT || gameOver}>Poss Change</button>
+      <button onClick={handle2PtConversion} disabled={!isPAT || gameOver}>2 Pt Good</button>
+      <button onClick={handle2PtDefense} disabled={!isPAT || gameOver}>2 Pt Def</button>
+      <button onClick={handleTimeoutHome} disabled={noMoreTimeoutsHome || gameOver}>Timeout Home</button>
       <br />
-      <button onClick={handlePATMissed} disabled={!isPAT}>PAT Miss</button>
-      <button onClick={handlePATGood} disabled={!isPAT}>PAT Good</button>
-      <button onClick={touchdownHome} disabled={isPAT}>TD Home</button>
-      <button onClick={touchdownAway} disabled={isPAT}>TD Away</button>
-      <button onClick={handleFieldGoal} disabled={isPAT}>Field Goal</button>
-      <button onClick={handle2PtSafety} disabled={isPAT}>2 Pt Safety</button>
-      <button onClick={handle1PtSafety} disabled={!isPAT}>1 Pt Safety</button>
-      <button onClick={handleTimeoutAway} disabled={noMoreTimeoutsAway}>Timeout Away</button>
+      <button onClick={handlePATMissed} disabled={!isPAT || gameOver}>PAT Miss</button>
+      <button onClick={handlePATGood} disabled={!isPAT || gameOver}>PAT Good</button>
+      <button onClick={touchdown} disabled={isPAT || gameOver}>Touchdown</button>
+      <button onClick={handleFieldGoal} disabled={isPAT || gameOver}>Field Goal</button>
+      <button onClick={handle2PtSafety} disabled={isPAT || gameOver}>2 Pt Safety</button>
+      <button onClick={handle1PtSafety} disabled={!isPAT || gameOver}>1 Pt Safety</button>
+      <button onClick={handleTimeoutAway} disabled={noMoreTimeoutsAway || gameOver}>Timeout Away</button>
       <br />
+      <button onClick={() => setPtsHome(ptsHome+1)}>+1 Home</button>
+      <button onClick={() => setPtsAway(ptsAway+1)}>+1 Away</button>
       <button onClick={() => setPtsHome(ptsHome-1)}>-1 Home</button>
       <button onClick={() => setPtsAway(ptsAway-1)}>-1 Away</button>
       <button onClick={() => setTime(time + 60)}>+1 Min</button>
       <button onClick={() => setTime(time + 1)}>+1 Sec</button>
       <button onClick={() => setTime(time - 60)}>-1 Min</button>
       <button onClick={() => setTime(time - 1)}>-1 Sec</button>
+      <button onClick={handleEndGame} disabled={gameOver}>End Game</button>
       <hr />
-      Quarter: {quarter}
-      <h2>{timeToTimestamp(time)}</h2>
-      <h3>{gameMsg}</h3>
-      <h3>Home {ptsHome} - {ptsAway} Away</h3>
-      <h4>Timeouts Home: {timeoutsHome}</h4>
-      <h4>Timeouts Away: {timeoutsAway}</h4>
+      <div className="scoreboard">
+        Quarter: <span className='seg'>{quarter}</span>
+        <h2 className='seg'>{timeToTimestamp(time)}</h2>
+        <h3>{gameMsg}</h3>
+        <h3>Home <span className='seg'>{ptsHome}</span> - <span className='seg'>{ptsAway}</span> Away</h3>
+        <h4>TOL <span className='seg'>{timeoutsHome}</span> - <span className='seg'>{timeoutsAway}</span> TOL</h4>
+      </div>
     </div>
   );
 }

@@ -1,3 +1,20 @@
+@font-face {
+  font-family: '7 Segment Display';
+  src: url('../public/fonts/DSEG7ClassicMini-Regular.ttf');
+}
+
+.scoreboard {
+  background-color: black;
+  color: white;
+  padding-bottom: 5px;
+  padding-top: 13px;
+}
+
+.seg {
+  font-family: '7 Segment Display';
+  color: red;
+}
+
 .App {
   text-align: center;
 }
